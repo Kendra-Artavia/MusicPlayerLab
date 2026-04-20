@@ -1,3 +1,14 @@
 <resources>
     <string name="app_name">MusicPlayerLab</string>
+    <string name="error_empty_query">La consulta de busqueda no puede estar vacia.</string>
+    <string name="error_missing_client_id">El client_id de Jamendo no esta configurado.</string>
+    <string name="error_empty_response_body">Jamendo devolvio HTTP 200 pero sin contenido.</string>
+    <string name="error_http_client">Error en la solicitud a Jamendo.</string>
+    <string name="error_http_server">Error del servidor de Jamendo.</string>
+    <string name="error_http_unexpected">Respuesta HTTP inesperada de Jamendo.</string>
+    <string name="error_timeout">La conexion con Jamendo excedio el tiempo de espera.</string>
+    <string name="error_network_io">Error de red al conectar con Jamendo.</string>
+    <string name="error_no_internet">No hay conexion a internet. Verifica tu red e intenta de nuevo.</string>
+    <string name="error_parse_failure">No se pudo procesar la respuesta de Jamendo.</string>
+    <string name="error_unknown">Ocurrio un error inesperado al solicitar canciones.</string>
 </resources>

@@ -1,15 +1,21 @@
 package com.example.musicplayerlab.network
 
 import com.example.musicplayerlab.utils.Constants
+import com.example.musicplayerlab.utils.ErrorType
 import com.example.musicplayerlab.utils.NetworkResult
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import java.io.IOException
 import java.net.HttpURLConnection
+import java.net.SocketTimeoutException
 import java.net.URL
 import java.net.URLEncoder
 
 class JamendoApiClient @JvmOverloads constructor(
-    private val clientId: String = Constants.CLIENT_ID
+    private val clientId: String = Constants.CLIENT_ID,
+    private val connectionFactory: (String) -> HttpURLConnection = { url ->
+        URL(url).openConnection() as HttpURLConnection
+    }
 ) {
     suspend fun searchTracks(
         query: String,
@@ -17,11 +23,11 @@ class JamendoApiClient @JvmOverloads constructor(
     ): NetworkResult<String> = withContext(Dispatchers.IO) {
         val trimmedQuery = query.trim()
         if (trimmedQuery.isBlank()) {
-            return@withContext NetworkResult.Error("Search query cannot be empty.")
+            return@withContext NetworkResult.Error(type = ErrorType.EMPTY_QUERY)
         }
 
         if (!Constants.isClientIdConfigured(clientId)) {
-            return@withContext NetworkResult.Error("Jamendo client_id is not configured.")
+            return@withContext NetworkResult.Error(type = ErrorType.MISSING_CLIENT_ID)
         }
 
         var connection: HttpURLConnection? = null
@@ -31,24 +37,64 @@ class JamendoApiClient @JvmOverloads constructor(
             val responseCode = connection.responseCode
             val responseBody = readResponseBody(connection, responseCode)
 
-            if (responseCode in 200..299) {
-                if (responseBody.isNotBlank()) {
-                    NetworkResult.Success(responseBody)
-                } else {
+            when {
+                responseCode == HttpURLConnection.HTTP_OK -> {
+                    if (responseBody.isNotBlank()) {
+                        NetworkResult.Success(responseBody)
+                    } else {
+                        NetworkResult.Error(
+                            type = ErrorType.EMPTY_RESPONSE_BODY,
+                            code = responseCode
+                        )
+                    }
+                }
+
+                responseCode in 400..499 -> {
                     NetworkResult.Error(
-                        message = "The server returned an empty response.",
+                        type = ErrorType.HTTP_CLIENT,
+                        debugMessage = buildHttpDebugMessage(
+                            prefix = "Jamendo request error",
+                            responseCode = responseCode,
+                            responseBody = responseBody
+                        ),
                         code = responseCode
                     )
                 }
-            } else {
-                NetworkResult.Error(
-                    message = responseBody.ifBlank { "HTTP request failed." },
-                    code = responseCode
-                )
+
+                responseCode in 500..599 -> {
+                    NetworkResult.Error(
+                        type = ErrorType.HTTP_SERVER,
+                        debugMessage = buildHttpDebugMessage(
+                            prefix = "Jamendo server error",
+                            responseCode = responseCode,
+                            responseBody = responseBody
+                        ),
+                        code = responseCode
+                    )
+                }
+
+                else -> {
+                    NetworkResult.Error(
+                        type = ErrorType.HTTP_UNEXPECTED,
+                        debugMessage = buildHttpDebugMessage(
+                            prefix = "Unexpected Jamendo HTTP response",
+                            responseCode = responseCode,
+                            responseBody = responseBody
+                        ),
+                        code = responseCode
+                    )
+                }
             }
+        } catch (_: SocketTimeoutException) {
+            NetworkResult.Error(type = ErrorType.TIMEOUT)
+        } catch (exception: IOException) {
+            NetworkResult.Error(
+                type = ErrorType.NETWORK_IO,
+                throwable = exception
+            )
         } catch (exception: Exception) {
             NetworkResult.Error(
-                message = "Network request failed.",
+                type = ErrorType.UNKNOWN,
                 throwable = exception
             )
         } finally {
@@ -78,7 +124,7 @@ class JamendoApiClient @JvmOverloads constructor(
     }
 
     private fun createConnection(urlString: String): HttpURLConnection {
-        return (URL(urlString).openConnection() as HttpURLConnection).apply {
+        return connectionFactory(urlString).apply {
             requestMethod = "GET"
             connectTimeout = Constants.CONNECTION_TIMEOUT_MS
             readTimeout = Constants.READ_TIMEOUT_MS
@@ -91,13 +137,37 @@ class JamendoApiClient @JvmOverloads constructor(
         connection: HttpURLConnection,
         responseCode: Int
     ): String {
-        val stream = if (responseCode in 200..299) {
-            connection.inputStream
-        } else {
-            connection.errorStream
-        }
+        val stream = runCatching {
+            if (responseCode in 200..299) {
+                connection.inputStream
+            } else {
+                connection.errorStream ?: connection.inputStream
+            }
+        }.getOrNull()
 
-        return stream?.bufferedReader()?.use { it.readText() }.orEmpty()
+        return stream
+            ?.bufferedReader()
+            ?.use { it.readText() }
+            ?.trim()
+            .orEmpty()
+    }
+
+    private fun buildHttpDebugMessage(
+        prefix: String,
+        responseCode: Int,
+        responseBody: String
+    ): String {
+        val bodyPreview = responseBody
+            .lineSequence()
+            .firstOrNull { it.isNotBlank() }
+            .orEmpty()
+            .take(200)
+
+        return if (bodyPreview.isNotBlank()) {
+            "$prefix (HTTP $responseCode): $bodyPreview"
+        } else {
+            "$prefix (HTTP $responseCode)."
+        }
     }
 }
 

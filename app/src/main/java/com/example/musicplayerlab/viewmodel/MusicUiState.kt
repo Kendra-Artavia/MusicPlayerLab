@@ -1,6 +1,7 @@
 package com.example.musicplayerlab.viewmodel
 
 import com.example.musicplayerlab.model.Song
+import androidx.annotation.StringRes
 
 sealed class MusicUiState {
     object Idle : MusicUiState()
@@ -9,6 +10,6 @@ sealed class MusicUiState {
 
     data class Success(val songs: List<Song>) : MusicUiState()
 
-    data class Error(val message: String) : MusicUiState()
+    data class Error(@field:StringRes val messageResId: Int) : MusicUiState()
 }
 
