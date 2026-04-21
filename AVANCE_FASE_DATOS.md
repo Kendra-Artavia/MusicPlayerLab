@@ -72,4 +72,8 @@
 - Pendiente menor (opcional): agregar pruebas unitarias de `MusicViewModel` para transiciones de estado (`Idle`, `Loading`, `Success`, `Error`).
 - Mantener esta fase sin UI avanzada (sin RecyclerView, Adapter, navegacion ni reproductor completo).
 
+## Nota de separacion de seguimiento
+- El avance de la interfaz grafica Compose se movio a `AVANCE_FASE_UI.md`.
+- Este documento queda enfocado solo en fase de datos y logica base.
+
 

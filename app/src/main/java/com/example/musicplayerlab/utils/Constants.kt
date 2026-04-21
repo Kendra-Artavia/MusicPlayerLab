@@ -7,6 +7,7 @@ object Constants {
     const val TRACKS_ENDPOINT = "tracks"
     const val RESPONSE_FORMAT = "json"
     const val DEFAULT_LIMIT = 20
+    const val DEFAULT_INITIAL_QUERY = "rock"
     const val CONNECTION_TIMEOUT_MS = 15_000
     const val READ_TIMEOUT_MS = 15_000
     val CLIENT_ID: String = BuildConfig.JAMENDO_CLIENT_ID

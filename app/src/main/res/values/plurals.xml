@@ -1,0 +1,7 @@
+<resources>
+    <plurals name="home_success_count">
+        <item quantity="one">Se encontró %d canción.</item>
+        <item quantity="other">Se encontraron %d canciones.</item>
+    </plurals>
+</resources>
+
