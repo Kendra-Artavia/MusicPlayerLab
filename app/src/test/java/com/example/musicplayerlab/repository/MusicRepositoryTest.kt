@@ -146,16 +146,35 @@ class MusicRepositoryTest {
     }
 
     @Test
-    fun searchSongs_propagatesBlankQueryErrorFromApiClient() = runBlocking {
+    fun searchSongs_usesDefaultQueryWhenSearchTextIsBlank() = runBlocking {
         val repository = MusicRepository(
             connectivityChecker = FakeConnectivityChecker(isConnected = true),
-            apiClient = JamendoApiClient(clientId = "client-id-de-prueba")
+            apiClient = JamendoApiClient(
+                clientId = "client-id-de-prueba",
+                connectionFactory = {
+                    FakeHttpURLConnection(
+                        responseCodeValue = HttpURLConnection.HTTP_OK,
+                        responseBody = """
+                            {
+                              "results": [
+                                {
+                                  "id": 101,
+                                  "name": "Tema de prueba",
+                                  "artist_name": "Artista test",
+                                  "audio": "https://example.com/audio.mp3"
+                                }
+                              ]
+                            }
+                        """.trimIndent()
+                    )
+                }
+            )
         )
 
         val result = repository.searchSongs(query = "   ")
 
-        assertTrue(result is NetworkResult.Error)
-        assertEquals(ErrorType.EMPTY_QUERY, (result as NetworkResult.Error).type)
+        assertTrue(result is NetworkResult.Success)
+        assertEquals(1, (result as NetworkResult.Success).data.size)
     }
 
     private class FakeConnectivityChecker(

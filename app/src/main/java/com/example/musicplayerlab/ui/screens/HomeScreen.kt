@@ -42,17 +42,19 @@ fun MusicPlayerLabApp(
     val filteredSongs = viewModel.filteredSongs.collectAsStateWithLifecycle().value
     val previewPlaybackState = viewModel.previewPlaybackState.collectAsStateWithLifecycle().value
     val favoriteSongIds = viewModel.favoriteSongIds.collectAsStateWithLifecycle().value
+    val contentSource = viewModel.contentSource.collectAsStateWithLifecycle().value
 
     HomeScreen(
         uiState = uiState,
         onRetry = viewModel::loadInitialSongs,
         searchQuery = searchQuery,
         songListFilter = songListFilter,
+        contentSource = contentSource,
         filteredSongs = filteredSongs,
         favoriteSongIds = favoriteSongIds,
         onSearchQueryChange = viewModel::onSearchQueryChange,
-        onSearch = viewModel::onSearchQueryChange,
-        onClearQuery = { viewModel.onSearchQueryChange("") },
+        onSearch = viewModel::onSearch,
+        onClearQuery = { viewModel.onSearch("") },
         onSongListFilterChange = viewModel::onSongListFilterChange,
         previewPlaybackState = previewPlaybackState,
         onPreviewPlayPause = viewModel::onPreviewPlayPause,
@@ -67,6 +69,7 @@ fun HomeScreen(
     onRetry: () -> Unit,
     searchQuery: String,
     songListFilter: SongListFilter,
+    contentSource: MusicViewModel.ContentSource,
     filteredSongs: List<Song>,
     favoriteSongIds: Set<String>,
     onSearchQueryChange: (String) -> Unit,
@@ -113,6 +116,7 @@ fun HomeScreen(
                         filteredSongs = filteredSongs,
                         favoriteSongIds = favoriteSongIds,
                         songListFilter = songListFilter,
+                        contentSource = contentSource,
                         searchQuery = searchQuery,
                         previewPlaybackState = previewPlaybackState,
                         onPreviewPlayPause = onPreviewPlayPause,
@@ -132,6 +136,7 @@ private fun HomeStateContent(
     filteredSongs: List<Song>,
     favoriteSongIds: Set<String>,
     songListFilter: SongListFilter,
+    contentSource: MusicViewModel.ContentSource,
     searchQuery: String,
     previewPlaybackState: com.example.musicplayerlab.viewmodel.PreviewPlaybackState,
     onPreviewPlayPause: (Song) -> Unit,
@@ -139,12 +144,20 @@ private fun HomeStateContent(
     onFavoriteToggle: (String) -> Unit,
     onRetry: () -> Unit
 ) {
+    val hasActiveSearch = contentSource == MusicViewModel.ContentSource.SEARCH && searchQuery.isNotBlank()
+
     when (uiState) {
         MusicUiState.Idle -> CenteredMessageState(
             messageResId = R.string.home_idle_message
         )
 
-        MusicUiState.Loading -> LoadingState()
+        MusicUiState.Loading -> LoadingState(
+            messageResId = if (hasActiveSearch) {
+                R.string.home_search_loading_message
+            } else {
+                R.string.home_loading_message
+            }
+        )
 
         is MusicUiState.Success -> {
             if (filteredSongs.isEmpty()) {
@@ -152,24 +165,27 @@ private fun HomeStateContent(
                     songListFilter == SongListFilter.FAVORITES_ONLY && searchQuery.isBlank() -> {
                         R.string.home_favorites_empty_message
                     }
-                    songListFilter == SongListFilter.FAVORITES_ONLY -> {
+                    songListFilter == SongListFilter.FAVORITES_ONLY && hasActiveSearch -> {
                         R.string.home_favorites_search_empty_message
                     }
                     searchQuery.isBlank() -> R.string.home_empty_message
-                    else -> R.string.home_search_empty_message
+                    hasActiveSearch -> R.string.home_search_empty_message
+                    else -> R.string.home_empty_message
                 }
                 val supportingMessageResId = when {
                     songListFilter == SongListFilter.FAVORITES_ONLY && searchQuery.isBlank() -> {
                         R.string.home_favorites_empty_hint
                     }
 
-                    songListFilter == SongListFilter.FAVORITES_ONLY -> {
+                    songListFilter == SongListFilter.FAVORITES_ONLY && hasActiveSearch -> {
                         R.string.home_favorites_search_empty_hint
                     }
 
                     searchQuery.isBlank() -> R.string.home_empty_hint
 
-                    else -> R.string.home_search_empty_hint
+                    hasActiveSearch -> R.string.home_search_empty_hint
+
+                    else -> R.string.home_empty_hint
                 }
                 EmptyState(
                     messageResId = emptyMessageResId,
@@ -196,7 +212,16 @@ private fun HomeStateContent(
                 R.string.error_timeout,
                 R.string.error_no_internet -> R.string.error_connection_hint
 
-                else -> null
+                else -> if (hasActiveSearch) {
+                    R.string.home_search_error_hint
+                } else {
+                    null
+                }
+            },
+            actionResId = if (hasActiveSearch) {
+                R.string.home_search_retry_action
+            } else {
+                R.string.home_retry_action
             },
             onRetry = onRetry
         )

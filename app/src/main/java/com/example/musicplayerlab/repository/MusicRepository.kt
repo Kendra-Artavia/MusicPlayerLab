@@ -15,9 +15,24 @@ class MusicRepository constructor(
     private val apiClient: JamendoApiClient = JamendoApiClient(),
     private val jsonParser: JsonParser = JsonParser
 ) {
+    suspend fun searchSongsByText(
+        searchText: String,
+        limit: Int = Constants.DEFAULT_LIMIT
+    ): NetworkResult<List<Song>> {
+        val effectiveQuery = searchText.trim().ifBlank { Constants.DEFAULT_INITIAL_QUERY }
+        return fetchSongs(query = effectiveQuery, limit = limit)
+    }
+
     suspend fun searchSongs(
         query: String,
         limit: Int = Constants.DEFAULT_LIMIT
+    ): NetworkResult<List<Song>> {
+        return searchSongsByText(searchText = query, limit = limit)
+    }
+
+    private suspend fun fetchSongs(
+        query: String,
+        limit: Int
     ): NetworkResult<List<Song>> = withContext(Dispatchers.IO) {
         if (!connectivityChecker.isInternetAvailable()) {
             return@withContext NetworkResult.Error(
@@ -25,7 +40,7 @@ class MusicRepository constructor(
             )
         }
 
-        when (val result = apiClient.searchTracks(query, limit)) {
+        when (val result = apiClient.searchSongsByText(query, limit)) {
             is NetworkResult.Success -> {
                 try {
                     val songs = jsonParser.parseTrackResponse(result.data).results

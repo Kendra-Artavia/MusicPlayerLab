@@ -27,9 +27,16 @@ class MusicViewModel @JvmOverloads constructor(
         connectivityChecker = AndroidNetworkConnectivityChecker(application)
     )
 ) : AndroidViewModel(application) {
+    enum class ContentSource {
+        INITIAL,
+        SEARCH
+    }
+
     private val previewPlayerManager = PreviewPlayerManager()
     private val favoritesRepository = FavoritesRepository(application)
     private var searchJob: Job? = null
+    private var lastSearchQuery: String? = null
+    private var initialSongsCache: List<Song> = emptyList()
 
     private val _uiState = MutableStateFlow<MusicUiState>(MusicUiState.Idle)
     val uiState: StateFlow<MusicUiState> = _uiState.asStateFlow()
@@ -37,6 +44,9 @@ class MusicViewModel @JvmOverloads constructor(
     private val _allSongs = MutableStateFlow<List<Song>>(emptyList())
     private val _searchQuery = MutableStateFlow("")
     val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
+
+    private val _contentSource = MutableStateFlow(ContentSource.INITIAL)
+    val contentSource: StateFlow<ContentSource> = _contentSource.asStateFlow()
 
     private val _songListFilter = MutableStateFlow(SongListFilter.ALL)
     val songListFilter: StateFlow<SongListFilter> = _songListFilter.asStateFlow()
@@ -48,13 +58,11 @@ class MusicViewModel @JvmOverloads constructor(
 
     val filteredSongs: StateFlow<List<Song>> = combine(
         _allSongs,
-        _searchQuery,
         _songListFilter,
         favoriteSongIds
-    ) { songs, query, listFilter, favorites ->
+    ) { songs, listFilter, favorites ->
         filterSongs(
             songs = songs,
-            query = query,
             listFilter = listFilter,
             favoriteSongIds = favorites
         )
@@ -65,11 +73,41 @@ class MusicViewModel @JvmOverloads constructor(
     )
 
     fun loadInitialSongs() {
-        searchSongs(Constants.DEFAULT_INITIAL_QUERY)
+        performRemoteSearch(
+            query = Constants.DEFAULT_INITIAL_QUERY,
+            source = ContentSource.INITIAL
+        )
     }
 
     fun onSearchQueryChange(query: String) {
+        val previousQuery = _searchQuery.value
         _searchQuery.value = query
+
+        if (query.isBlank() && previousQuery.isNotBlank()) {
+            restoreInitialContent()
+        }
+    }
+
+    fun onSearch(query: String) {
+        val trimmedQuery = query.trim()
+        if (trimmedQuery.isBlank()) {
+            _searchQuery.value = ""
+            restoreInitialContent()
+            return
+        }
+
+        if (
+            _contentSource.value == ContentSource.SEARCH &&
+            lastSearchQuery == trimmedQuery
+        ) {
+            return
+        }
+
+        _searchQuery.value = trimmedQuery
+        performRemoteSearch(
+            query = trimmedQuery,
+            source = ContentSource.SEARCH
+        )
     }
 
     fun onSongListFilterChange(filter: SongListFilter) {
@@ -102,15 +140,54 @@ class MusicViewModel @JvmOverloads constructor(
     fun searchSongs(query: String, limit: Int = Constants.DEFAULT_LIMIT) {
         val trimmedQuery = query.trim()
         if (trimmedQuery.isBlank()) {
-            _uiState.value = MusicUiState.Error(R.string.error_empty_query)
+            _searchQuery.value = ""
+            restoreInitialContent()
             return
         }
 
+        if (
+            _contentSource.value == ContentSource.SEARCH &&
+            lastSearchQuery == trimmedQuery
+        ) {
+            return
+        }
+
+        _searchQuery.value = trimmedQuery
+        performRemoteSearch(
+            query = trimmedQuery,
+            limit = limit,
+            source = ContentSource.SEARCH
+        )
+    }
+
+    private fun restoreInitialContent() {
+        if (initialSongsCache.isNotEmpty()) {
+            _contentSource.value = ContentSource.INITIAL
+            _allSongs.value = initialSongsCache
+            _uiState.value = MusicUiState.Success(initialSongsCache)
+        } else {
+            loadInitialSongs()
+        }
+    }
+
+    private fun performRemoteSearch(
+        query: String,
+        limit: Int = Constants.DEFAULT_LIMIT,
+        source: ContentSource
+    ) {
         searchJob?.cancel()
         searchJob = viewModelScope.launch {
+            _contentSource.value = source
             _uiState.value = MusicUiState.Loading
-            when (val result = repository.searchSongs(trimmedQuery, limit)) {
+            when (val result = repository.searchSongsByText(query, limit)) {
                 is NetworkResult.Success -> {
+                    if (source == ContentSource.INITIAL) {
+                        initialSongsCache = result.data
+                        lastSearchQuery = null
+                    } else {
+                        lastSearchQuery = query
+                    }
+
                     _allSongs.value = result.data
                     _uiState.value = MusicUiState.Success(result.data)
                 }
@@ -140,24 +217,12 @@ class MusicViewModel @JvmOverloads constructor(
 
     private fun filterSongs(
         songs: List<Song>,
-        query: String,
         listFilter: SongListFilter,
         favoriteSongIds: Set<String>
     ): List<Song> {
-        val trimmedQuery = query.trim()
-        val baseSongs = when (listFilter) {
+        return when (listFilter) {
             SongListFilter.ALL -> songs
             SongListFilter.FAVORITES_ONLY -> songs.filter { song -> favoriteSongIds.contains(song.id) }
-        }
-
-        if (trimmedQuery.isBlank()) {
-            return baseSongs
-        }
-
-        return baseSongs.filter { song ->
-            song.title.contains(trimmedQuery, ignoreCase = true) ||
-                song.artistName.contains(trimmedQuery, ignoreCase = true) ||
-                (song.albumName?.contains(trimmedQuery, ignoreCase = true) == true)
         }
     }
 

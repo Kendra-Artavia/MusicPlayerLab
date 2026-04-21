@@ -16,6 +16,37 @@ import java.net.URL
 
 class JamendoApiClientTest {
     @Test
+    fun searchSongsByText_returnsErrorWhenQueryIsBlank() = runBlocking {
+        val apiClient = JamendoApiClient(clientId = "client-id-de-prueba")
+
+        val result = apiClient.searchSongsByText(searchText = "   ")
+
+        assertTrue(result is NetworkResult.Error)
+        assertEquals(ErrorType.EMPTY_QUERY, (result as NetworkResult.Error).type)
+    }
+
+    @Test
+    fun searchSongsByText_buildsUrlWithEncodedSearchTerm() = runBlocking {
+        var requestedUrl: String? = null
+        val apiClient = JamendoApiClient(
+            clientId = "client-id-de-prueba",
+            connectionFactory = { urlString ->
+                requestedUrl = urlString
+                FakeHttpURLConnection(
+                    responseCodeValue = HttpURLConnection.HTTP_OK,
+                    responseBody = "{\"results\": []}"
+                )
+            }
+        )
+
+        val result = apiClient.searchSongsByText(searchText = "rock latino")
+
+        assertTrue(result is NetworkResult.Success)
+        assertTrue(requestedUrl?.contains("/tracks/?") == true)
+        assertTrue(requestedUrl?.contains("namesearch=rock+latino") == true)
+    }
+
+    @Test
     fun searchTracks_returnsErrorWhenQueryIsBlank() = runBlocking {
         val apiClient = JamendoApiClient(clientId = "client-id-de-prueba")
 

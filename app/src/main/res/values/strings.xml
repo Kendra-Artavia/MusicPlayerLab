@@ -2,6 +2,7 @@
     <string name="app_name">MusicPlayerLab</string>
     <string name="home_idle_message">La pantalla principal está lista para mostrar canciones.</string>
     <string name="home_loading_message">Cargando canciones…</string>
+    <string name="home_search_loading_message">Buscando canciones…</string>
     <string name="home_search_placeholder">Buscar canciones</string>
     <string name="home_search_action">Buscar</string>
     <string name="home_search_clear_action">Limpiar</string>
@@ -21,6 +22,7 @@
     <string name="home_favorites_search_empty_hint">Prueba con otro término o limpia la búsqueda.</string>
     <string name="home_reload_action">Recargar</string>
     <string name="home_retry_action">Reintentar</string>
+    <string name="home_search_retry_action">Buscar de nuevo</string>
     <string name="song_unknown_title">Sin título</string>
     <string name="song_unknown_artist">Artista desconocido</string>
     <string name="song_play_action">Reproducir</string>
@@ -47,4 +49,5 @@
     <string name="error_no_internet">No hay conexión a internet. Verifica tu red e inténtalo de nuevo.</string>
     <string name="error_parse_failure">No se pudo procesar la respuesta de Jamendo.</string>
     <string name="error_unknown">Ocurrió un error inesperado al solicitar canciones.</string>
+    <string name="home_search_error_hint">Verifica tu término y vuelve a intentar. También puedes limpiar la búsqueda.</string>
 </resources>

@@ -17,6 +17,13 @@ class JamendoApiClient @JvmOverloads constructor(
         URL(url).openConnection() as HttpURLConnection
     }
 ) {
+    suspend fun searchSongsByText(
+        searchText: String,
+        limit: Int = Constants.DEFAULT_LIMIT
+    ): NetworkResult<String> {
+        return searchTracks(query = searchText, limit = limit)
+    }
+
     suspend fun searchTracks(
         query: String,
         limit: Int = Constants.DEFAULT_LIMIT

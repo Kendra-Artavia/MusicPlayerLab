@@ -16,6 +16,9 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.example.musicplayerlab.R
@@ -82,6 +85,10 @@ fun HomeSearchBar(
                     Text(text = stringResource(R.string.home_search_section_hint))
                 },
                 singleLine = true,
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                keyboardActions = KeyboardActions(
+                    onSearch = { onSearch(query.trim()) }
+                ),
                 textStyle = MaterialTheme.typography.bodyLarge
             )
 
