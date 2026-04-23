@@ -45,3 +45,8 @@ Para el detalle técnico del laboratorio, iniciar en:
 
 - [`docs/README_TECNICO.md`](docs/README_TECNICO.md)
 
+## 🎥 Video de Demostración
+
+Este video muestra el funcionamiento de la aplicación, incluyendo la búsqueda, la gestión de favoritos y la reproducción de previews de audio.
+
+▶️ [Ver demo](https://youtube.com/shorts/ZCMbw_yUEdw?feature=share)

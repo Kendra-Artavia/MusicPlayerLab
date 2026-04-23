@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">MusicPlayerLab</string>
+    <string name="app_name">MusicPlayer</string>
     <string name="home_idle_message">La pantalla principal está lista para mostrar canciones.</string>
     <string name="home_loading_message">Cargando canciones…</string>
     <string name="home_search_loading_message">Buscando canciones…</string>
